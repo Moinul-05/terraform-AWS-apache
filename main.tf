@@ -1,14 +1,14 @@
 provider "aws" {
     region = "us-east-1"
 }
-
+#adding resources dedicated vpc
 resource "aws_vpc" "prod-vpc" {
   cidr_block = "10.0.0.0/16"
   tags = {
     Name = "production-vpc"
   }
 }
-
+#creating subnet
 resource "aws_subnet" "subnet-1" {
   vpc_id     = aws_vpc.prod-vpc.id
   cidr_block = "10.0.1.0/24"
@@ -18,12 +18,12 @@ resource "aws_subnet" "subnet-1" {
     Name = "prod-subnet"
   }
 }
-
+#route table association
 resource "aws_route_table_association" "a" {
   subnet_id      = aws_subnet.subnet-1.id
   route_table_id = aws_route_table.prod-route-table.id
 }
-
+#dedicated igw
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.prod-vpc.id
 
@@ -31,7 +31,7 @@ resource "aws_internet_gateway" "gw" {
     Name = "production"
   }
 }
-
+#route table
 resource "aws_route_table" "prod-route-table" {
   vpc_id = aws_vpc.prod-vpc.id
 
@@ -49,7 +49,7 @@ resource "aws_route_table" "prod-route-table" {
     Name = "prod"
   }
 }
-
+#security group
 resource "aws_security_group" "allow_web" {
   name        = "allow_web_traffic"
   description = "Allow web inbound traffic"
@@ -91,21 +91,21 @@ resource "aws_security_group" "allow_web" {
     Name = "allow_web"
   }
 }
-
+#eth setting
 resource "aws_network_interface" "web-server-nic" {
   subnet_id       = aws_subnet.subnet-1.id
   private_ips     = ["10.0.1.50"]
   security_groups = [aws_security_group.allow_web.id]
 
 }
-
+#eip setting
 resource "aws_eip" "one" {
   vpc                       = true
   network_interface         = aws_network_interface.web-server-nic.id
   associate_with_private_ip = "10.0.1.50"
   depends_on = [aws_internet_gateway.gw] 
 }
-
+#web server creation
 resource "aws_instance" "web-server-instance" {
     ami         = "ami-09e67e426f25ce0d7"
     instance_type = "t2.micro" 
@@ -115,7 +115,7 @@ resource "aws_instance" "web-server-instance" {
       device_index = 0
       network_interface_id = aws_network_interface.web-server-nic.id
     }
-
+#user data 
     user_data = <<-EOF
                 #!/bin/bash
                 sudo apt update -y
